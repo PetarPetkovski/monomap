@@ -8,36 +8,36 @@
 		applicationCategory: 'ProductivityApplication',
 		operatingSystem: 'Web',
 		description:
-			'MonoMap is a single-purpose, keyboard-first, local-first mind map. It opens instantly, works offline, and stays out of the way while you think.',
+			'MonoMap is a single-purpose, keyboard-first, local-first mind map app. It opens instantly, works offline, and stays out of the way while you think.',
 		offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
 		author: { '@type': 'Organization', name: 'MonoMap', url: 'https://monomap.app/' }
 	});
 </script>
 
 <svelte:head>
-	<title>MonoMap — A single-purpose mind map</title>
+	<title>MonoMap — Mind Map App</title>
 	<meta
 		name="description"
-		content="MonoMap is a keyboard-first, local-first mind map. One tool, one job, zero bloat — it opens instantly, works offline, and stays out of the way while you think."
+		content="MonoMap is a free, keyboard-first, local-first mind map app. One tool, one job, zero bloat — it opens instantly, works offline, and stays out of the way while you think."
 	/>
 	<link rel="canonical" href="https://monomap.app/" />
 	<meta name="robots" content="index, follow" />
 
 	<meta property="og:type" content="website" />
 	<meta property="og:site_name" content="MonoMap" />
-	<meta property="og:title" content="MonoMap — A single-purpose mind map" />
+	<meta property="og:title" content="MonoMap — Mind Map App" />
 	<meta
 		property="og:description"
-		content="A keyboard-first, local-first mind map. One tool, one job, zero bloat — opens instantly, works offline, and stays out of the way while you think."
+		content="A free, keyboard-first, local-first mind map app. One tool, one job, zero bloat — opens instantly, works offline, and stays out of the way while you think."
 	/>
 	<meta property="og:url" content="https://monomap.app/" />
 	<meta property="og:image" content="https://monomap.app/og-image.png" />
 
 	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="MonoMap — A single-purpose mind map" />
+	<meta name="twitter:title" content="MonoMap — Mind Map App" />
 	<meta
 		name="twitter:description"
-		content="A keyboard-first, local-first mind map. One tool, one job, zero bloat."
+		content="A keyboard-first, local-first mind map app. One tool, one job, zero bloat."
 	/>
 	<meta name="twitter:image" content="https://monomap.app/og-image.png" />
 </svelte:head>
@@ -171,6 +171,9 @@
 			<a href="/terms" class="footer-link">Terms of Service</a>
 			<a href="https://www.tehnika.mk" target="_blank" rel="noopener noreferrer" class="footer-link">
 				A product by Tehnika
+			</a>
+			<a href="https://github.com/tehnika-mk/monomap" target="_blank" rel="noopener noreferrer" class="footer-link">
+				GitHub
 			</a>
 			<a href="mailto:hello@tehnika.mk" class="footer-link">hello@tehnika.mk</a>
 			<span class="footer-copy">© 2026 MonoMap</span>

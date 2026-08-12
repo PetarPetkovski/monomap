@@ -33,6 +33,10 @@ test('footer links to privacy, terms, Tehnika and email', async ({ page }) => {
 		'href',
 		'https://www.tehnika.mk'
 	);
+	await expect(page.getByRole('link', { name: 'GitHub' })).toHaveAttribute(
+		'href',
+		'https://github.com/tehnika-mk/monomap'
+	);
 	await expect(page.getByRole('link', { name: 'hello@tehnika.mk' })).toHaveAttribute(
 		'href',
 		'mailto:hello@tehnika.mk'
