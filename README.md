@@ -91,11 +91,6 @@ SPEC.md                 detailed application specification
 The build is a fully static site. See **[DEPLOY.md](DEPLOY.md)** for the CloudPanel/nginx/Cloudflare
 go-live steps (upload `build/`, apply the SPA fallback + headers, configure DNS/SSL, submit the sitemap).
 
-## Analytics & Privacy
-
-The site loads Google Analytics (`G-3WDK5D21PV`) on every page. The app itself stores all user data locally
-— see the [Privacy Policy](src/routes/privacy/+page.svelte) for details.
-
 ## License / Contact
 
 MonoMap is a product by **Tehnika**. Contact: [hello@tehnika.mk](mailto:hello@tehnika.mk) ·
