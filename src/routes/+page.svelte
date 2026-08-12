@@ -15,29 +15,29 @@
 </script>
 
 <svelte:head>
-	<title>MonoMap — Mind Map App</title>
+	<title>MonoMap - Free Mind Map App</title>
 	<meta
 		name="description"
-		content="MonoMap is a free, keyboard-first, local-first mind map app. One tool, one job, zero bloat — it opens instantly, works offline, and stays out of the way while you think."
+		content="Free, local-first mind map app with .md support, zero bloat and minimal interface."
 	/>
 	<link rel="canonical" href="https://monomap.app/" />
 	<meta name="robots" content="index, follow" />
 
 	<meta property="og:type" content="website" />
 	<meta property="og:site_name" content="MonoMap" />
-	<meta property="og:title" content="MonoMap — Mind Map App" />
+	<meta property="og:title" content="MonoMap - Free Mind Map App" />
 	<meta
 		property="og:description"
-		content="A free, keyboard-first, local-first mind map app. One tool, one job, zero bloat — opens instantly, works offline, and stays out of the way while you think."
+		content="Free, local-first mind map app with .md support, zero bloat and minimal interface."
 	/>
 	<meta property="og:url" content="https://monomap.app/" />
 	<meta property="og:image" content="https://monomap.app/og-image.png" />
 
 	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="MonoMap — Mind Map App" />
+	<meta name="twitter:title" content="MonoMap - Free Mind Map App" />
 	<meta
 		name="twitter:description"
-		content="A keyboard-first, local-first mind map app. One tool, one job, zero bloat."
+		content="Free, local-first mind map app with .md support, zero bloat and minimal interface."
 	/>
 	<meta name="twitter:image" content="https://monomap.app/og-image.png" />
 </svelte:head>
