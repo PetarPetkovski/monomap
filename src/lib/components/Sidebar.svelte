@@ -1,0 +1,849 @@
+<script lang="ts">
+	import { slide } from 'svelte/transition';
+	import type { MapData } from '$lib/types';
+	import { canvas } from '$lib/stores/canvas.svelte';
+	import { settings } from '$lib/stores/settings.svelte';
+	import { theme } from '$lib/stores/theme.svelte';
+	import { ui } from '$lib/stores/ui.svelte';
+	import { workspace } from '$lib/stores/workspace.svelte';
+	import { applyProfile, buildProfile, parseProfile } from '$lib/profile';
+	import { downloadJson, downloadText, safeFilename } from '$lib/utils/download';
+	import { exportMapPng } from '$lib/utils/exportPng';
+	import { autoSortTree, mapToMarkdown, parseMarkdownTree } from '$lib/utils/treeExport';
+
+	const maps = $derived(workspace.maps);
+	const folders = $derived(workspace.folders);
+	const activeTabId = $derived(workspace.activeTabId);
+	const open = $derived(canvas.sidebarOpen);
+	const unassigned = $derived(maps.filter((m) => !m.folderId));
+
+	let expanded = $state<Record<string, boolean>>({});
+	let menuFor = $state<string | null>(null);
+	let folderMenuFor = $state<string | null>(null);
+	let renaming = $state<{ type: 'map' | 'folder'; id: string } | null>(null);
+	let renameDraft = $state('');
+	let addingFolder = $state(false);
+	let newFolderDraft = $state('');
+	let dragTarget = $state<string | null>(null);
+	let fileInput = $state<HTMLInputElement | null>(null);
+	let importing = $state(false);
+	let profileInput = $state<HTMLInputElement | null>(null);
+	let importingProfile = $state(false);
+
+	function folderExpanded(folderId: string) {
+		return expanded[folderId] !== false;
+	}
+
+	function folderMaps(folderId: string) {
+		return maps.filter((m) => m.folderId === folderId);
+	}
+
+	function startRename(type: 'map' | 'folder', id: string, current: string) {
+		renaming = { type, id };
+		renameDraft = current;
+		menuFor = null;
+		folderMenuFor = null;
+	}
+
+	function commitRename() {
+		if (!renaming) return;
+		const value = renameDraft.trim();
+		if (renaming.type === 'map') workspace.renameMap(renaming.id, value || 'Untitled Map');
+		else workspace.renameFolder(renaming.id, value || 'Folder');
+		renaming = null;
+	}
+
+	function commitNewFolder() {
+		const value = newFolderDraft.trim();
+		if (value) workspace.createFolder(value);
+		addingFolder = false;
+		newFolderDraft = '';
+	}
+
+	function saveProfile() {
+		downloadJson(buildProfile(), 'mindmap-profile.json');
+	}
+
+	async function importProfileFile(file: File) {
+		const text = await file.text();
+		const profile = parseProfile(text);
+		if (!profile) {
+			alert('This is not a valid Mind Map profile file.');
+			return;
+		}
+		const confirmed = confirm('Replace your current local workspace with this profile?');
+		if (confirmed) applyProfile(profile);
+	}
+
+	function onProfileChosen(e: Event) {
+		const input = e.currentTarget as HTMLInputElement;
+		const file = input.files?.[0];
+		if (file) {
+			importingProfile = true;
+			void importProfileFile(file).finally(() => {
+				importingProfile = false;
+				input.value = '';
+			});
+		}
+	}
+
+	function exportMapMd(map: MapData) {
+		downloadText(mapToMarkdown(map), `${safeFilename(map.title)}.md`);
+	}
+
+	async function exportMapPngAction(map: MapData) {
+		const world = document.querySelector<HTMLElement>('[data-world]');
+		if (!world) return;
+		await exportMapPng(map.title, world, canvas.nodeSizes, map.rootNode);
+	}
+
+	async function importFile(file: File) {
+		const text = await file.text();
+		const root = parseMarkdownTree(text);
+		autoSortTree(root);
+		const title = file.name.replace(/\.(md|markdown|txt)$/i, '') || 'Imported';
+		workspace.createMapFromRoot(title, root);
+	}
+
+	function onFileChosen(e: Event) {
+		const input = e.currentTarget as HTMLInputElement;
+		const file = input.files?.[0];
+		if (file) {
+			importing = true;
+			void importFile(file).finally(() => {
+				importing = false;
+				input.value = '';
+			});
+		}
+	}
+
+	function onDragStart(e: DragEvent, mapId: string) {
+		e.dataTransfer?.setData('text/map', mapId);
+		if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+	}
+
+	function onDragOver(e: DragEvent, target: string) {
+		e.preventDefault();
+		if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+		dragTarget = target;
+	}
+
+	function onDrop(e: DragEvent, target: string) {
+		e.preventDefault();
+		dragTarget = null;
+		const id = e.dataTransfer?.getData('text/map');
+		if (id) workspace.moveMap(id, target === 'root' ? null : target);
+	}
+
+	function autofocus(el: HTMLInputElement) {
+		el.focus();
+	}
+</script>
+
+<svelte:window
+	onkeydown={(e) => {
+		if (e.key === 'Escape') {
+			menuFor = null;
+			folderMenuFor = null;
+			renaming = null;
+			addingFolder = false;
+		}
+	}}
+	onclick={() => {
+		menuFor = null;
+		folderMenuFor = null;
+	}}
+/>
+
+{#if open}
+	{#if ui.isCompact}
+		<div class="backdrop" onclick={() => (canvas.sidebarOpen = false)} aria-hidden="true"></div>
+	{/if}
+	<div class="panel" role="complementary" aria-label="Maps sidebar" transition:slide={{ duration: 160 }}>
+		<header>
+			<span class="heading">Maps</span>
+			<button
+				type="button"
+				class="icon-btn"
+				title="Close sidebar"
+				aria-label="Close sidebar"
+				onclick={() => (canvas.sidebarOpen = false)}
+			>
+				‹
+			</button>
+		</header>
+
+		<div class="tree">
+			<div class="group-label">Create</div>
+			<button
+				type="button"
+				class="tree-row dropzone"
+				class:drag-over={dragTarget === 'root'}
+				ondragover={(e) => onDragOver(e, 'root')}
+				ondragleave={() => (dragTarget = null)}
+				ondrop={(e) => onDrop(e, 'root')}
+				onclick={() => workspace.createMap()}
+			>
+				<span class="glyph">＋</span>
+				<span class="label">New map</span>
+			</button>
+
+			{#if addingFolder}
+				<input
+					class="rename-input new-folder-input"
+					bind:value={newFolderDraft}
+					placeholder="Folder name"
+					use:autofocus
+					onkeydown={(e) => {
+						if (e.key === 'Enter') commitNewFolder();
+						if (e.key === 'Escape') {
+							addingFolder = false;
+							newFolderDraft = '';
+						}
+					}}
+					onblur={commitNewFolder}
+				/>
+			{:else}
+				<button type="button" class="tree-row" onclick={() => (addingFolder = true)}>
+					<span class="glyph">＋</span>
+					<span class="label">New folder</span>
+				</button>
+			{/if}
+
+			<button type="button" class="tree-row" disabled={importing} onclick={() => fileInput?.click()}>
+				<span class="glyph">{importing ? '…' : '⇪'}</span>
+				<span class="label">{importing ? 'Importing…' : 'Import .md / .txt'}</span>
+			</button>
+			<input
+				bind:this={fileInput}
+				type="file"
+				accept=".md,.markdown,.txt,text/markdown,text/plain"
+				data-testid="import-markdown"
+				class="hidden"
+				onchange={onFileChosen}
+			/>
+
+			{#if unassigned.length > 0}
+				<div class="group-label">Maps</div>
+				{#each unassigned as map (map.id)}
+					{@render MapRow(map)}
+				{/each}
+			{/if}
+
+			{#each folders as folder (folder.id)}
+				<div class="folder">
+					<div
+						class="tree-row folder-head"
+						class:drag-over={dragTarget === folder.id}
+						role="group"
+						ondragover={(e) => onDragOver(e, folder.id)}
+						ondragleave={() => (dragTarget = null)}
+						ondrop={(e) => onDrop(e, folder.id)}
+						ondblclick={() => {
+							if (!renaming) startRename('folder', folder.id, folder.name);
+						}}
+					>
+						<button
+							type="button"
+							class="fold-toggle"
+							aria-label={`Toggle folder ${folder.name}`}
+							onclick={(e) => {
+								e.stopPropagation();
+								expanded[folder.id] = !folderExpanded(folder.id);
+							}}
+						>
+							{folderExpanded(folder.id) ? '▾' : '▸'}
+						</button>
+						<span class="glyph">📁</span>
+						{#if renaming?.type === 'folder' && renaming.id === folder.id}
+							<input
+								class="rename-input"
+								bind:value={renameDraft}
+								use:autofocus
+								onclick={(e) => e.stopPropagation()}
+								onkeydown={(e) => {
+									if (e.key === 'Enter') commitRename();
+									if (e.key === 'Escape') renaming = null;
+								}}
+								onblur={commitRename}
+							/>
+						{:else}
+							<span class="label">{folder.name}</span>
+						{/if}
+						<span class="count">{folderMaps(folder.id).length}</span>
+						<button
+							type="button"
+							class="menu-btn"
+							aria-label="Folder actions"
+							onclick={(e) => {
+								e.stopPropagation();
+								folderMenuFor = folderMenuFor === folder.id ? null : folder.id;
+								menuFor = null;
+							}}
+							ondblclick={(e) => e.stopPropagation()}
+						>
+							⋯
+						</button>
+						{#if folderMenuFor === folder.id}
+							<div class="menu">
+								<button type="button" onclick={() => startRename('folder', folder.id, folder.name)}>
+									Rename
+								</button>
+								<button
+									type="button"
+									onclick={() => {
+										workspace.deleteFolder(folder.id);
+										folderMenuFor = null;
+									}}
+								>
+									Delete
+								</button>
+							</div>
+						{/if}
+					</div>
+
+					{#if folderExpanded(folder.id)}
+						<div
+							class="dropzone"
+							class:drag-over={dragTarget === folder.id}
+							role="group"
+							ondragover={(e) => onDragOver(e, folder.id)}
+							ondragleave={() => (dragTarget = null)}
+							ondrop={(e) => onDrop(e, folder.id)}
+						>
+							{#each folderMaps(folder.id) as map (map.id)}
+								{@render MapRow(map)}
+							{/each}
+						</div>
+					{/if}
+				</div>
+			{/each}
+		</div>
+
+		<div class="prefs">
+			<span class="prefs-label">Preferences</span>
+			<button
+				type="button"
+				class="pref-row"
+				class:active={theme.theme === 'dark'}
+				aria-pressed={theme.theme === 'dark'}
+				title="Toggle dark mode"
+				onclick={() => theme.toggle()}
+			>
+				<span class="pref-glyph">
+					{#if theme.theme === 'dark'}
+						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+							<circle cx="12" cy="12" r="4" />
+							<path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+						</svg>
+					{:else}
+						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+						</svg>
+					{/if}
+				</span>
+				<span class="pref-name">{theme.theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
+			</button>
+			{#if !ui.isCompact}
+				<button
+					type="button"
+					class="pref-row"
+					class:active={settings.shortcutsEnabled}
+					aria-pressed={settings.shortcutsEnabled}
+					title="Keyboard shortcuts"
+					onclick={() => settings.toggleShortcuts()}
+				>
+					<span class="pref-glyph">⌨</span>
+					<span class="pref-name">Shortcuts</span>
+				</button>
+			{/if}
+			<button
+				type="button"
+				class="pref-row"
+				class:active={settings.gridEnabled}
+				aria-pressed={settings.gridEnabled}
+				title="Background Dots"
+				onclick={() => settings.toggleGrid()}
+			>
+				<span class="pref-glyph">
+					<svg width="14" height="14" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
+						<circle cx="2" cy="2" r="1.1" />
+						<circle cx="6" cy="2" r="1.1" />
+						<circle cx="10" cy="2" r="1.1" />
+						<circle cx="2" cy="6" r="1.1" />
+						<circle cx="6" cy="6" r="1.1" />
+						<circle cx="10" cy="6" r="1.1" />
+						<circle cx="2" cy="10" r="1.1" />
+						<circle cx="6" cy="10" r="1.1" />
+						<circle cx="10" cy="10" r="1.1" />
+					</svg>
+				</span>
+				<span class="pref-name">Background Dots</span>
+			</button>
+			<button
+				type="button"
+				class="pref-row"
+				class:active={canvas.mdPaneOpen}
+				aria-pressed={canvas.mdPaneOpen}
+				title="Toggle MD Editor"
+				onclick={() => (canvas.mdPaneOpen = !canvas.mdPaneOpen)}
+			>
+				<span class="pref-glyph">≔</span>
+				<span class="pref-name">MD Editor</span>
+			</button>
+		</div>
+
+		<div class="profile">
+			<span class="profile-label">Profile</span>
+			<div class="profile-actions">
+				<button type="button" onclick={saveProfile}>Save profile</button>
+				<button type="button" disabled={importingProfile} onclick={() => profileInput?.click()}>
+					{importingProfile ? 'Importing…' : 'Import profile'}
+				</button>
+			</div>
+			<input
+				bind:this={profileInput}
+				type="file"
+				accept=".json,application/json"
+				data-testid="import-profile"
+				class="hidden"
+				onchange={onProfileChosen}
+			/>
+		</div>
+	</div>
+{:else}
+	<button
+		type="button"
+		class="handle"
+		title="Toggle sidebar"
+		aria-label="Toggle sidebar"
+		onclick={() => (canvas.sidebarOpen = true)}
+	>
+		☰
+	</button>
+{/if}
+
+{#snippet MapRow(map: MapData)}
+	<div
+		class="tree-row map-row"
+		class:active={activeTabId === map.id}
+		role="button"
+		tabindex="-1"
+		draggable="true"
+		ondragstart={(e) => onDragStart(e, map.id)}
+		onclick={(e) => {
+			if ((e.target as HTMLElement).closest('.menu')) return;
+			workspace.openTab(map.id);
+		}}
+		ondblclick={() => {
+			if (!renaming) startRename('map', map.id, map.title);
+		}}
+		onkeydown={(e) => {
+			if (e.key === 'Enter' || e.key === ' ') {
+				e.preventDefault();
+				workspace.openTab(map.id);
+			}
+		}}
+	>
+		<span class="glyph">▦</span>
+		{#if renaming?.type === 'map' && renaming.id === map.id}
+			<input
+				class="rename-input"
+				bind:value={renameDraft}
+				use:autofocus
+				onclick={(e) => e.stopPropagation()}
+				onkeydown={(e) => {
+					if (e.key === 'Enter') commitRename();
+					if (e.key === 'Escape') renaming = null;
+				}}
+				onblur={commitRename}
+			/>
+		{:else}
+			<span class="label" title={map.title}>{map.title}</span>
+		{/if}
+		<button
+			type="button"
+			class="menu-btn"
+			aria-label={`Actions for ${map.title}`}
+			onclick={(e) => {
+				e.stopPropagation();
+				menuFor = menuFor === map.id ? null : map.id;
+				folderMenuFor = null;
+			}}
+			ondblclick={(e) => e.stopPropagation()}
+		>
+			⋯
+		</button>
+		{#if menuFor === map.id}
+			<div class="menu">
+				<button type="button" onclick={() => startRename('map', map.id, map.title)}>Rename</button>
+				<button
+					type="button"
+					onclick={() => {
+						workspace.duplicateMap(map.id);
+						menuFor = null;
+					}}
+				>
+					Duplicate
+				</button>
+				<button
+					type="button"
+					onclick={() => {
+						exportMapMd(map);
+						menuFor = null;
+					}}
+				>
+					Export .md
+				</button>
+				<button
+					type="button"
+					onclick={() => {
+						menuFor = null;
+						void exportMapPngAction(map);
+					}}
+				>
+					Export PNG
+				</button>
+				<button
+					type="button"
+					class="danger"
+					onclick={() => {
+						workspace.deleteMap(map.id);
+						menuFor = null;
+					}}
+				>
+					Delete
+				</button>
+			</div>
+		{/if}
+	</div>
+{/snippet}
+
+<style>
+	.panel {
+		position: absolute;
+		top: 0;
+		left: 0;
+		bottom: 0;
+		width: 272px;
+		z-index: 40;
+		display: flex;
+		flex-direction: column;
+		background: var(--surface);
+		border-right: 1px solid var(--edge);
+		box-shadow: 8px 0 24px rgb(0 0 0 / 0.08);
+	}
+
+	.backdrop {
+		position: absolute;
+		inset: 0;
+		z-index: 39;
+		background: rgb(0 0 0 / 0.3);
+	}
+
+	@media (max-width: 640px) {
+		.panel {
+			width: min(320px, 84vw);
+			padding-top: env(safe-area-inset-top);
+		}
+	}
+
+	header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		height: 48px;
+		padding: 0 14px;
+		border-bottom: 1px solid var(--edge);
+	}
+
+	.heading {
+		font-size: 13px;
+		font-weight: 600;
+	}
+
+	.icon-btn {
+		border: none;
+		background: transparent;
+		color: var(--muted);
+		font-size: 20px;
+		line-height: 1;
+		cursor: pointer;
+		padding: 2px 8px;
+		border-radius: 6px;
+	}
+
+	.icon-btn:hover {
+		color: var(--fg);
+		background: var(--surface-2);
+	}
+
+	.tree {
+		flex: 1;
+		overflow-y: auto;
+		padding: 8px;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+
+	.tree-row {
+		position: relative;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		width: 100%;
+		padding: 6px 8px;
+		border: none;
+		border-radius: 8px;
+		background: transparent;
+		color: var(--fg);
+		font-size: 13px;
+		text-align: left;
+		cursor: pointer;
+		transition: background 0.1s ease;
+	}
+
+	.tree-row:hover {
+		background: var(--surface-2);
+	}
+
+	.tree-row.active {
+		background: var(--surface-2);
+	}
+
+	.tree-row.drag-over,
+	.dropzone.drag-over {
+		background: color-mix(in srgb, var(--accent) 14%, var(--surface-2));
+	}
+
+	.folder-head {
+		font-weight: 500;
+	}
+
+	.glyph {
+		flex: none;
+		font-size: 13px;
+		width: 18px;
+		text-align: center;
+	}
+
+	.label {
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.count {
+		flex: none;
+		font-size: 11px;
+		color: var(--muted);
+	}
+
+	.fold-toggle {
+		flex: none;
+		border: none;
+		background: transparent;
+		color: var(--muted);
+		font-size: 11px;
+		cursor: pointer;
+		padding: 0 2px;
+		width: 14px;
+	}
+
+	.menu-btn {
+		flex: none;
+		border: none;
+		background: transparent;
+		color: var(--muted);
+		font-size: 15px;
+		line-height: 1;
+		cursor: pointer;
+		padding: 0 4px;
+		border-radius: 4px;
+	}
+
+	.menu-btn:hover {
+		color: var(--fg);
+		background: var(--surface-2);
+	}
+
+	.rename-input {
+		flex: 1;
+		min-width: 0;
+		padding: 3px 6px;
+		border: 1px solid var(--accent);
+		border-radius: 6px;
+		background: var(--surface);
+		color: var(--fg);
+		font-size: 13px;
+		outline: none;
+	}
+
+	.new-folder-input {
+		flex: 0 1 auto;
+		width: auto;
+		margin: 2px 8px;
+	}
+
+	.group-label {
+		font-size: 11px;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--muted);
+		padding: 8px 8px 4px;
+	}
+
+	.menu {
+		position: absolute;
+		right: 6px;
+		top: calc(100% + 2px);
+		z-index: 20;
+		min-width: 140px;
+		background: var(--surface);
+		border: 1px solid var(--edge);
+		border-radius: 10px;
+		box-shadow: 0 8px 24px rgb(0 0 0 / 0.14);
+		padding: 4px;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.menu button {
+		text-align: left;
+		padding: 7px 10px;
+		border: none;
+		background: transparent;
+		border-radius: 6px;
+		color: var(--fg);
+		font-size: 12.5px;
+		cursor: pointer;
+	}
+
+	.menu button:hover {
+		background: var(--surface-2);
+	}
+
+	.menu button.danger {
+		color: #ef4444;
+	}
+
+	.profile {
+		margin: 8px 8px 0;
+		padding: 10px 12px;
+		border-radius: 10px;
+		border: 1px solid var(--edge);
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	.profile-label {
+		font-size: 11px;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--muted);
+	}
+
+	.prefs {
+		margin: 8px 8px 0;
+		padding: 8px;
+		border-radius: 10px;
+		border: 1px solid var(--edge);
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+
+	.prefs-label {
+		font-size: 11px;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--muted);
+		padding: 0 4px 4px;
+	}
+
+	.pref-row {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		width: 100%;
+		padding: 4px 6px;
+		border: none;
+		border-radius: 7px;
+		background: transparent;
+		color: var(--fg);
+		font-size: 12.5px;
+		text-align: left;
+		cursor: pointer;
+	}
+
+	.pref-row:hover {
+		background: var(--surface-2);
+	}
+
+	.pref-row.active {
+		background: var(--surface-2);
+	}
+
+	.pref-glyph {
+		width: 18px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 13px;
+		color: var(--muted);
+		flex: none;
+	}
+
+	.pref-name {
+		flex: 1;
+	}
+
+	.profile-actions {
+		display: flex;
+		gap: 6px;
+	}
+
+	.profile-actions button {
+		flex: 1;
+		padding: 6px 8px;
+		border: 1px solid var(--edge);
+		border-radius: 7px;
+		background: transparent;
+		color: var(--fg);
+		font-size: 12px;
+		cursor: pointer;
+	}
+
+	.profile-actions button:hover {
+		background: var(--surface-2);
+	}
+
+	.profile-actions button:disabled {
+		opacity: 0.6;
+		cursor: default;
+	}
+
+	.handle {
+		position: absolute;
+		top: 12px;
+		left: 12px;
+		z-index: 30;
+		width: 34px;
+		height: 34px;
+		border: 1px solid var(--edge);
+		border-radius: 9px;
+		background: var(--surface);
+		color: var(--fg);
+		font-size: 16px;
+		cursor: pointer;
+		box-shadow: var(--node-shadow);
+	}
+
+	.handle:hover {
+		background: var(--surface-2);
+	}
+</style>
