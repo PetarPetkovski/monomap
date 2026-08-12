@@ -86,11 +86,6 @@ SPEC.md                 detailed application specification
 - **End-to-end** (`npm run test:e2e`): real-browser coverage of the desktop app, the landing/legal pages,
   and a mobile viewport (touch pan, pinch zoom, tap-to-edit, bottom sheets).
 
-## Deployment
-
-The build is a fully static site. See **[DEPLOY.md](DEPLOY.md)** for the CloudPanel/nginx/Cloudflare
-go-live steps (upload `build/`, apply the SPA fallback + headers, configure DNS/SSL, submit the sitemap).
-
 ## License / Contact
 
 MonoMap is a product by **Tehnika**. Contact: [hello@tehnika.mk](mailto:hello@tehnika.mk) ·
