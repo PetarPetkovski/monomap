@@ -10,6 +10,13 @@
 		return !!target?.closest('[contenteditable="true"], input, textarea, select');
 	}
 
+	// Interactive chrome (buttons, links, role=button/tab) must keep their own
+	// keyboard behavior; node shortcuts should not hijack focused controls.
+	function isInteractiveTarget(e: Event) {
+		const target = e.target as HTMLElement | null;
+		return !!target?.closest('button, a, [role="button"], [role="tab"]');
+	}
+
 	let spaceTimer: ReturnType<typeof setTimeout> | undefined;
 
 	function handleKeyDown(e: KeyboardEvent) {
@@ -18,6 +25,8 @@
 		const editing = canvas.editingNodeId !== null;
 
 		if (mod) {
+			// Don't override browser/text-editing shortcuts while typing.
+			if (editing || isEditableTarget(e)) return;
 			if (key === 't') {
 				e.preventDefault();
 				workspace.createMap();
@@ -74,7 +83,7 @@
 
 		// Space: quick tap edits the selected node, hold + drag pans.
 		if (e.key === ' ') {
-			if (editing || isEditableTarget(e)) return;
+			if (editing || isEditableTarget(e) || isInteractiveTarget(e)) return;
 			e.preventDefault();
 			canvas.spaceDown = true;
 			if (!spaceTimer) {
@@ -85,7 +94,7 @@
 			return;
 		}
 
-		if (editing || isEditableTarget(e)) return;
+		if (editing || isEditableTarget(e) || isInteractiveTarget(e)) return;
 		if (e.repeat) return;
 
 		const selected = canvas.selectedNodeId;

@@ -68,8 +68,8 @@
 </script>
 
 {#if visible}
-	<div class="sheet-handle" aria-hidden="true"></div>
 	<div class="panel" role="complementary" aria-label="Card editor">
+		<div class="sheet-handle" aria-hidden="true"></div>
 		{#if card}
 			<header>
 				<input

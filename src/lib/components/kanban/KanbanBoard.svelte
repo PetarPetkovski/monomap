@@ -222,7 +222,8 @@
 		display: flex;
 		align-items: center;
 		justify-content: flex-start;
-		gap: 12px;
+		flex-wrap: wrap;
+		gap: 8px 12px;
 		padding: 64px 20px 8px;
 		flex: none;
 	}
@@ -238,6 +239,10 @@
 		font-size: 18px;
 		font-weight: 650;
 		margin: 0;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
 	.title-input {

@@ -1,9 +1,12 @@
 <script lang="ts">
 	import { kanban } from '$lib/stores/kanban.svelte';
+	import { ui } from '$lib/stores/ui.svelte';
 
 	function clear() {
 		kanban.filterQuery = '';
 	}
+
+	const placeholder = $derived(ui.isCompact ? 'Filter cards' : 'Filter cards (Ctrl+F)');
 </script>
 
 <div class="filter" role="search">
@@ -12,7 +15,7 @@
 		bind:this={kanban.searchInputEl}
 		bind:value={kanban.filterQuery}
 		type="text"
-		placeholder="Filter cards (Ctrl+F)"
+		placeholder={placeholder}
 		aria-label="Filter cards"
 		spellcheck="false"
 		onkeydown={(e) => {

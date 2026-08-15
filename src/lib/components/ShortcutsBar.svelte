@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { canvas } from '$lib/stores/canvas.svelte';
+	import { ui } from '$lib/stores/ui.svelte';
 	import { workspace } from '$lib/stores/workspace.svelte';
 	import { countNodes } from '$lib/utils/tree';
 
@@ -12,7 +13,7 @@
 	const barLeft = $derived(canvas.mdPaneOpen ? 'calc(50% + 326px)' : '50%');
 </script>
 
-{#if workspace.viewMode === 'mindmap'}
+{#if workspace.viewMode === 'mindmap' && !ui.isCompact}
 	<div class="bar" style:left={barLeft}>
 		{#if freshMap}
 			<span class="item">Press <kbd>Tab</kbd> to add a node</span>
@@ -76,12 +77,5 @@
 		border-bottom-width: 2px;
 		border-radius: 4px;
 		padding: 1px 5px;
-	}
-
-	@media (max-width: 640px) {
-		.bar {
-			max-width: calc(100vw - 24px);
-			padding: 6px 10px;
-		}
 	}
 </style>

@@ -35,11 +35,19 @@
 		return `background-image: radial-gradient(circle, ${GRID_DOT} 1.2px, transparent 1.3px); background-size: ${size}px ${size}px; background-position: ${px}px ${py}px;`;
 	});
 
+	// Keep a node selected for keyboard-first use, but only when the map changed
+	// or the current selection no longer exists. A deliberate deselect (Escape,
+	// tapping the background) must stay cleared.
+	let lastMapId: string | null = null;
 	$effect(() => {
 		const map = workspace.getActiveMap();
-		if (map) {
-			const selected = canvas.selectedNodeId;
-			if (!selected || !findNode(map.rootNode, selected)) canvas.selectNode(map.rootNode.id);
+		if (!map) return;
+		const selected = canvas.selectedNodeId;
+		if (map.id !== lastMapId) {
+			lastMapId = map.id;
+			canvas.selectNode(map.rootNode.id);
+		} else if (selected && !findNode(map.rootNode, selected)) {
+			canvas.selectNode(map.rootNode.id);
 		}
 	});
 

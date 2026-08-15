@@ -44,7 +44,11 @@ test('canvas edits reflect into the markdown when the pane is not focused', asyn
 	await openMap(page);
 	const ta = (await openPane(page)).getByRole('textbox', { name: 'Markdown outline' });
 
-	// Focus stays on the sidebar toggle; Tab on the canvas creates a child.
+	// Blur the sidebar toggle so Tab lands on the canvas and creates a child.
+	await page.evaluate(() => {
+		(document.activeElement as HTMLElement | null)?.blur();
+		window.__mindmap!.canvas.selectNode(window.__mindmap!.workspace.maps[0].rootNode.id);
+	});
 	await page.keyboard.press('Tab');
 	await page.waitForFunction(() => window.__mindmap!.workspace.maps[0].rootNode.children.length === 3);
 	await expect(ta).toHaveValue('# Central idea\n- Node 1\n- Node 2\n- ');

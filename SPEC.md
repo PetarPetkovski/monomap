@@ -211,7 +211,8 @@ settings (theme) — to a `mindmap-profile.json` file and restores it on import 
 
 A **keyboard shortcuts bar** sits at the bottom-center of the **Mind Map** workspace and is **always shown**
 (there is no toggle). It lists the core shortcuts and shows a "Press Tab to add a node" tip while the active
-map has a single node. The bar is hidden in the Kanban workspace, which has no canvas shortcuts.
+map has a single node. The bar is hidden in the Kanban workspace, which has no canvas shortcuts, and on
+compact/touch devices (`ui.isCompact`), where there is no physical keyboard to type them.
 
 ### 4.7 Split-screen .md editor
 
@@ -359,9 +360,9 @@ e2e/                       Playwright specs (canvas, node panel, md pane, landin
   touch devices to keep the canvas clear.
 - **Kanban on mobile**: the column strip scrolls horizontally; cards drag with touch via pointer capture
   (`touch-action: none`); the card editor is a bottom sheet.
-- **Compact chrome**: the sidebar is closed by default on phones; the tab bar and the always-on shortcuts
-  bar drop the desktop centering offset and wrap to fit the viewport width; touch targets (node `+` button,
-  close/tool buttons) are enlarged on coarse pointers.
+- **Compact chrome**: the sidebar is closed by default on phones; the shortcuts bar is hidden entirely (there
+  is no physical keyboard), and the tab bar drops the desktop centering offset and wraps to fit the viewport
+  width; touch targets (node `+` button, close/tool buttons) are enlarged on coarse pointers.
 - `app.html` uses `viewport-fit=cover`; panels/bars apply `env(safe-area-inset-*)`. Desktop behavior is
   unchanged (wheel, Space, middle-drag, auto-open panels).
 
