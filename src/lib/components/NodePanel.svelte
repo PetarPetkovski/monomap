@@ -4,6 +4,7 @@
 	import { workspace } from '$lib/stores/workspace.svelte';
 	import { findNode } from '$lib/utils/tree';
 	import { normalizeUrl } from '$lib/utils/url';
+	import { boardFromBranch, findCardLocation, openLinkedCard, sendNodeToBoard } from '$lib/utils/kanbanLink';
 	import EmojiPicker from './EmojiPicker.svelte';
 
 	const COLOR_PRESETS: Array<{ name: string; value: string | null }> = [
@@ -24,6 +25,10 @@
 
 	const visible = $derived(!!target && canvas.panelOpen);
 	const reopenVisible = $derived(!!target && !canvas.panelOpen);
+
+	const activeMapId = $derived(workspace.getActiveMap()?.id ?? '');
+	const linkedCard = $derived(target?.metadata?.kanbanCardId ? findCardLocation(target.metadata.kanbanCardId) : null);
+	const sendLabel = $derived(linkedCard ? 'Open on Board ↗' : 'Send to Kanban Board');
 
 	let showEmoji = $state(false);
 	let linkDraft = $state('');
@@ -163,6 +168,30 @@
 						{/each}
 					</ul>
 				{/if}
+			</section>
+
+			<section class="section">
+				<span class="label">Kanban</span>
+				<div class="kanban-actions">
+					<button
+						type="button"
+						class="mini-btn block"
+						onclick={() => {
+							if (target) sendNodeToBoard(activeMapId, target);
+						}}
+					>
+						{sendLabel}
+					</button>
+					<button
+						type="button"
+						class="mini-btn block"
+						onclick={() => {
+							if (target) boardFromBranch(activeMapId, target);
+						}}
+					>
+						Generate Board from Branch
+					</button>
+				</div>
 			</section>
 
 			<section class="section notes">
@@ -398,6 +427,17 @@
 
 	.mini-btn.open {
 		background: var(--surface-2);
+	}
+
+	.kanban-actions {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+
+	.mini-btn.block {
+		width: 100%;
+		text-align: left;
 	}
 
 	.link-form {

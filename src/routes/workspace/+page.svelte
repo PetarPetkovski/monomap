@@ -7,6 +7,8 @@
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import TabBar from '$lib/components/TabBar.svelte';
 	import ShortcutsBar from '$lib/components/ShortcutsBar.svelte';
+	import WorkspaceSwitch from '$lib/components/WorkspaceSwitch.svelte';
+	import KanbanBoard from '$lib/components/kanban/KanbanBoard.svelte';
 	import { workspace } from '$lib/stores/workspace.svelte';
 	import { canvas } from '$lib/stores/canvas.svelte';
 
@@ -21,7 +23,9 @@
 </script>
 
 <svelte:head>
-	<title>{workspace.getActiveMap()?.title ?? 'MonoMap'}</title>
+	<title>{workspace.viewMode === 'kanban'
+		? workspace.getActiveBoard()?.title ?? 'MonoMap'
+		: workspace.getActiveMap()?.title ?? 'MonoMap'}</title>
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
@@ -39,11 +43,17 @@
 {:else}
 	<div class="relative h-dvh w-full overflow-hidden">
 		<Keyboard />
-		<Canvas />
-		<TabBar />
+		<div class="absolute inset-0" class:hidden={workspace.viewMode === 'kanban'}>
+			<Canvas />
+			<MdPane />
+			<NodePanel />
+			<TabBar />
+		</div>
+		{#if workspace.viewMode === 'kanban'}
+			<KanbanBoard />
+		{/if}
+		<WorkspaceSwitch />
 		<Sidebar />
-		<MdPane />
-		<NodePanel />
 		<ShortcutsBar />
 	</div>
 {/if}

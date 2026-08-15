@@ -14,3 +14,15 @@ export function nodeId(): string {
 export function folderId(): string {
 	return uid('folder');
 }
+
+export function boardId(): string {
+	return uid('board');
+}
+
+export function columnId(): string {
+	return uid('col');
+}
+
+export function cardId(): string {
+	return uid('card');
+}

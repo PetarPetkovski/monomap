@@ -10,7 +10,6 @@ export interface Profile {
 	workspace: Workspace;
 	settings: {
 		theme: 'light' | 'dark';
-		shortcutsEnabled: boolean;
 	};
 }
 
@@ -21,8 +20,7 @@ export function buildProfile(): Profile {
 		exportedAt: Date.now(),
 		workspace: workspace.serialize(),
 		settings: {
-			theme: theme.theme,
-			shortcutsEnabled: settings.shortcutsEnabled
+			theme: theme.theme
 		}
 	};
 }
@@ -40,5 +38,4 @@ export function parseProfile(text: string): Profile | null {
 export function applyProfile(profile: Profile): void {
 	workspace.restore(profile.workspace);
 	theme.theme = profile.settings.theme === 'dark' ? 'dark' : 'light';
-	settings.shortcutsEnabled = profile.settings.shortcutsEnabled !== false;
 }

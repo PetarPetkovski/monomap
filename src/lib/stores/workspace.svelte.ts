@@ -1,8 +1,26 @@
-import type { Folder, MapData, MindNode, Vec2, Workspace } from '$lib/types';
+import type {
+	Folder,
+	KanbanBoard,
+	KanbanCard,
+	KanbanColumn,
+	KanbanLabel,
+	MapData,
+	MindNode,
+	Vec2,
+	ViewMode,
+	Workspace
+} from '$lib/types';
 import { loadWorkspace, scheduleSave } from '$lib/db/idb';
 import { childPositions, cloneTree, findNode, findParent, insertChild, removeChild } from '$lib/utils/tree';
 import { normalizeUrl } from '$lib/utils/url';
-import { folderId as newFolderId, mapId as newMapId, nodeId } from '$lib/utils/id';
+import {
+	boardId as newBoardId,
+	cardId as newCardId,
+	columnId as newColumnId,
+	folderId as newFolderId,
+	mapId as newMapId,
+	nodeId
+} from '$lib/utils/id';
 
 function createRootNode(text = 'Central idea'): MindNode {
 	return { id: nodeId(), text, position: { x: 0, y: 0 }, children: [] };
@@ -39,7 +57,43 @@ function cloneNode(node: MindNode): MindNode {
 		style: node.style ? { color: node.style.color, icon: node.style.icon } : undefined,
 		notes: node.notes,
 		links: node.links ? [...node.links] : undefined,
+		metadata: node.metadata ? { kanbanCardId: node.metadata.kanbanCardId } : undefined,
 		children: node.children.map(cloneNode)
+	};
+}
+
+function cloneCard(card: KanbanCard): KanbanCard {
+	return {
+		id: card.id,
+		title: card.title,
+		description: card.description,
+		labels: card.labels
+			? card.labels.map((label) => ({ text: label.text, color: label.color }))
+			: undefined,
+		dueDate: card.dueDate,
+		checklist: card.checklist
+			? card.checklist.map((item) => ({ id: item.id, text: item.text, done: item.done }))
+			: undefined,
+		sourceNodeId: card.sourceNodeId
+	};
+}
+
+function cloneColumn(column: KanbanColumn): KanbanColumn {
+	return {
+		id: column.id,
+		title: column.title,
+		cards: column.cards.map(cloneCard)
+	};
+}
+
+function cloneBoard(board: KanbanBoard): KanbanBoard {
+	return {
+		id: board.id,
+		title: board.title,
+		sourceMapId: board.sourceMapId,
+		columns: board.columns.map(cloneColumn),
+		createdAt: board.createdAt,
+		updatedAt: board.updatedAt
 	};
 }
 
@@ -49,6 +103,9 @@ export class WorkspaceState {
 	openTabs = $state<string[]>([]);
 	folders = $state<Folder[]>([]);
 	maps = $state<MapData[]>([]);
+	viewMode = $state<ViewMode>('mindmap');
+	activeBoardId = $state<string>('');
+	boards = $state<KanbanBoard[]>([]);
 
 	constructor() {
 		$effect.root(() => {
@@ -62,7 +119,7 @@ export class WorkspaceState {
 
 	serialize(): Workspace {
 		return {
-			version: 1,
+			version: 2,
 			activeTabId: this.activeTabId,
 			openTabs: [...this.openTabs],
 			folders: this.folders.map((folder) => ({
@@ -77,7 +134,10 @@ export class WorkspaceState {
 				createdAt: map.createdAt,
 				updatedAt: map.updatedAt,
 				rootNode: cloneNode(map.rootNode)
-			}))
+			})),
+			viewMode: this.viewMode,
+			activeBoardId: this.activeBoardId,
+			boards: this.boards.map(cloneBoard)
 		};
 	}
 
@@ -91,6 +151,9 @@ export class WorkspaceState {
 			this.openTabs = [map.id];
 			this.activeTabId = map.id;
 			this.folders = [];
+			this.viewMode = 'mindmap';
+			this.activeBoardId = '';
+			this.boards = [];
 		}
 		this.ready = true;
 	}
@@ -111,6 +174,10 @@ export class WorkspaceState {
 			this.openTabs = [map.id];
 			this.activeTabId = map.id;
 		}
+		this.boards = Array.isArray(ws.boards) ? ws.boards : [];
+		const boardIds = new Set(this.boards.map((b) => b.id));
+		this.activeBoardId = ws.activeBoardId && boardIds.has(ws.activeBoardId) ? ws.activeBoardId : '';
+		this.viewMode = ws.viewMode === 'kanban' ? 'kanban' : 'mindmap';
 	}
 
 	// --- maps ---
@@ -353,6 +420,258 @@ export class WorkspaceState {
 			if (node.links.length === 0) delete node.links;
 			this.touch(this.activeTabId);
 		}
+	}
+
+	// --- view mode ---
+
+	setViewMode(mode: ViewMode): void {
+		this.viewMode = mode;
+	}
+
+	// --- boards ---
+
+	getActiveBoard(): KanbanBoard | undefined {
+		return this.boards.find((b) => b.id === this.activeBoardId);
+	}
+
+	private touchBoard(boardId: string): void {
+		const board = this.boards.find((b) => b.id === boardId);
+		if (board) board.updatedAt = Date.now();
+	}
+
+	createBoard(title = 'Untitled Board', sourceMapId: string | null = null): KanbanBoard {
+		const now = Date.now();
+		const board: KanbanBoard = {
+			id: newBoardId(),
+			title,
+			sourceMapId,
+			columns: [{ id: newColumnId(), title: 'Inbox', cards: [] }],
+			createdAt: now,
+			updatedAt: now
+		};
+		this.boards = [...this.boards, board];
+		this.openBoard(board.id);
+		return board;
+	}
+
+	openBoard(boardId: string): void {
+		if (!this.boards.some((b) => b.id === boardId)) return;
+		this.activeBoardId = boardId;
+		this.viewMode = 'kanban';
+	}
+
+	renameBoard(boardId: string, title: string): void {
+		const board = this.boards.find((b) => b.id === boardId);
+		if (board) {
+			board.title = title;
+			this.touchBoard(boardId);
+		}
+	}
+
+	deleteBoard(boardId: string): void {
+		this.boards = this.boards.filter((b) => b.id !== boardId);
+		if (this.activeBoardId === boardId) {
+			this.activeBoardId = this.boards[0]?.id ?? '';
+			if (!this.activeBoardId) this.viewMode = 'mindmap';
+		}
+	}
+
+	// --- columns ---
+
+	addColumn(boardId: string, title = 'Column'): KanbanColumn | null {
+		const board = this.boards.find((b) => b.id === boardId);
+		if (!board) return null;
+		const column: KanbanColumn = { id: newColumnId(), title, cards: [] };
+		board.columns.push(column);
+		this.touchBoard(boardId);
+		return column;
+	}
+
+	renameColumn(boardId: string, columnId: string, title: string): void {
+		const column = this.boards.find((b) => b.id === boardId)?.columns.find((c) => c.id === columnId);
+		if (column) {
+			column.title = title;
+			this.touchBoard(boardId);
+		}
+	}
+
+	deleteColumn(boardId: string, columnId: string): void {
+		const board = this.boards.find((b) => b.id === boardId);
+		if (board) {
+			board.columns = board.columns.filter((c) => c.id !== columnId);
+			this.touchBoard(boardId);
+		}
+	}
+
+	moveColumn(boardId: string, columnId: string, toIndex: number): void {
+		const board = this.boards.find((b) => b.id === boardId);
+		if (!board) return;
+		const from = board.columns.findIndex((c) => c.id === columnId);
+		if (from === -1) return;
+		const [column] = board.columns.splice(from, 1);
+		const target = Math.min(board.columns.length, Math.max(0, toIndex));
+		board.columns.splice(target, 0, column);
+		this.touchBoard(boardId);
+	}
+
+	// --- cards ---
+
+	createCard(boardId: string, columnId: string, title = ''): KanbanCard | null {
+		const column = this.boards.find((b) => b.id === boardId)?.columns.find((c) => c.id === columnId);
+		if (!column) return null;
+		const card: KanbanCard = { id: newCardId(), title, sourceNodeId: null };
+		column.cards.push(card);
+		this.touchBoard(boardId);
+		return card;
+	}
+
+	addCard(boardId: string, columnId: string, card: KanbanCard): KanbanCard | null {
+		const column = this.boards.find((b) => b.id === boardId)?.columns.find((c) => c.id === columnId);
+		if (!column) return null;
+		column.cards.push(card);
+		this.touchBoard(boardId);
+		return card;
+	}
+
+	updateCardTitle(boardId: string, cardId: string, title: string): void {
+		const board = this.boards.find((b) => b.id === boardId);
+		const card = board?.columns.find((c) => c.cards.some((card) => card.id === cardId))?.cards.find(
+			(card) => card.id === cardId
+		);
+		if (card) {
+			card.title = title;
+			this.touchBoard(boardId);
+		}
+	}
+
+	setCardDescription(boardId: string, cardId: string, description: string): void {
+		const card = this.findCard(boardId, cardId);
+		if (!card) return;
+		if (description) card.description = description;
+		else delete card.description;
+		this.touchBoard(boardId);
+	}
+
+	addCardLabel(boardId: string, cardId: string, label: KanbanLabel): void {
+		const card = this.findCard(boardId, cardId);
+		if (!card) return;
+		card.labels ??= [];
+		if (!card.labels.some((l) => l.text === label.text && l.color === label.color)) {
+			card.labels.push({ text: label.text, color: label.color });
+		}
+		this.touchBoard(boardId);
+	}
+
+	removeCardLabel(boardId: string, cardId: string, index: number): void {
+		const card = this.findCard(boardId, cardId);
+		if (card?.labels) {
+			card.labels.splice(index, 1);
+			if (card.labels.length === 0) delete card.labels;
+			this.touchBoard(boardId);
+		}
+	}
+
+	setCardDueDate(boardId: string, cardId: string, dueDate: number | null): void {
+		const card = this.findCard(boardId, cardId);
+		if (!card) return;
+		if (dueDate) card.dueDate = dueDate;
+		else delete card.dueDate;
+		this.touchBoard(boardId);
+	}
+
+	addChecklistItem(boardId: string, cardId: string, text = ''): void {
+		const card = this.findCard(boardId, cardId);
+		if (!card) return;
+		card.checklist ??= [];
+		card.checklist.push({ id: nodeId(), text, done: false });
+		this.touchBoard(boardId);
+	}
+
+	toggleChecklistItem(boardId: string, cardId: string, itemId: string): void {
+		const card = this.findCard(boardId, cardId);
+		const item = card?.checklist?.find((i) => i.id === itemId);
+		if (item) {
+			item.done = !item.done;
+			this.touchBoard(boardId);
+		}
+	}
+
+	updateChecklistItemText(boardId: string, cardId: string, itemId: string, text: string): void {
+		const card = this.findCard(boardId, cardId);
+		const item = card?.checklist?.find((i) => i.id === itemId);
+		if (item) {
+			item.text = text;
+			this.touchBoard(boardId);
+		}
+	}
+
+	removeChecklistItem(boardId: string, cardId: string, itemId: string): void {
+		const card = this.findCard(boardId, cardId);
+		if (card?.checklist) {
+			card.checklist = card.checklist.filter((i) => i.id !== itemId);
+			if (card.checklist.length === 0) delete card.checklist;
+			this.touchBoard(boardId);
+		}
+	}
+
+	moveCard(boardId: string, fromColumnId: string, toColumnId: string, cardId: string, toIndex: number): void {
+		const board = this.boards.find((b) => b.id === boardId);
+		if (!board) return;
+		const from = board.columns.find((c) => c.id === fromColumnId);
+		const to = board.columns.find((c) => c.id === toColumnId);
+		if (!from || !to) return;
+		const fromIndex = from.cards.findIndex((c) => c.id === cardId);
+		if (fromIndex === -1) return;
+		const [card] = from.cards.splice(fromIndex, 1);
+		let target = toIndex;
+		if (toColumnId === fromColumnId && fromIndex < toIndex) target = toIndex - 1;
+		target = Math.min(to.cards.length, Math.max(0, target));
+		to.cards.splice(target, 0, card);
+		this.touchBoard(boardId);
+	}
+
+	deleteCard(boardId: string, cardId: string): void {
+		const board = this.boards.find((b) => b.id === boardId);
+		const column = board?.columns.find((c) => c.cards.some((card) => card.id === cardId));
+		if (column) {
+			const card = column.cards.find((c) => c.id === cardId);
+			column.cards = column.cards.filter((c) => c.id !== cardId);
+			if (card?.sourceNodeId) this.clearNodeKanbanLink(card.sourceNodeId);
+			this.touchBoard(boardId);
+		}
+	}
+
+	// --- mind map ↔ kanban links ---
+
+	setNodeKanbanLink(nodeId: string, cardId: string): void {
+		for (const map of this.maps) {
+			const node = findNode(map.rootNode, nodeId);
+			if (node) {
+				node.metadata ??= {};
+				node.metadata.kanbanCardId = cardId;
+				this.touch(map.id);
+				return;
+			}
+		}
+	}
+
+	clearNodeKanbanLink(nodeId: string): void {
+		for (const map of this.maps) {
+			const node = findNode(map.rootNode, nodeId);
+			if (node?.metadata) {
+				delete node.metadata.kanbanCardId;
+				if (Object.keys(node.metadata).length === 0) delete node.metadata;
+				this.touch(map.id);
+				return;
+			}
+		}
+	}
+
+	private findCard(boardId: string, cardId: string): KanbanCard | undefined {
+		return this.boards
+			.find((b) => b.id === boardId)
+			?.columns.flatMap((c) => c.cards)
+			.find((c) => c.id === cardId);
 	}
 }
 

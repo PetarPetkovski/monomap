@@ -5,7 +5,7 @@
 
 	const tabs = $derived(workspace.openTabs);
 	const activeTabId = $derived(workspace.activeTabId);
-	const visible = $derived(tabs.length > 1);
+	const visible = $derived(tabs.length > 1 && workspace.viewMode === 'mindmap');
 	const tabLeft = $derived(ui.isCompact ? '50%' : canvas.mdPaneOpen ? 'calc(50% + 326px)' : '50%');
 
 	function title(id: string) {
@@ -67,7 +67,7 @@
 <style>
 	.tabbar {
 		position: absolute;
-		top: 10px;
+		top: 58px;
 		left: 50%;
 		transform: translateX(-50%);
 		z-index: 35;
@@ -85,7 +85,7 @@
 
 	@media (max-width: 640px) {
 		.tabbar {
-			top: calc(env(safe-area-inset-top) + 8px);
+			top: calc(env(safe-area-inset-top) + 58px);
 			max-width: calc(100vw - 24px);
 		}
 	}

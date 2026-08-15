@@ -19,6 +19,28 @@ export function mapToMarkdown(map: MapData): string {
 export function parseMarkdownTree(markdown: string, options?: { keepEmpty?: boolean }): MindNode {
 	const keepEmpty = options?.keepEmpty ?? false;
 	const lines = markdown.replace(/\r\n/g, '\n').split('\n');
+
+	// A document containing no headings/lists is plain text: for imports every
+	// non-empty line becomes a sibling node (SPEC §4.4 `.txt` behavior). The
+	// live split-view editor (keepEmpty) keeps skipping paragraphs.
+	const hasMarkers = lines.some((raw) => {
+		const line = raw.trimEnd();
+		if (line.trim() === '') return false;
+		return (
+			/^(#{1,6})\s+/.test(line) ||
+			/^(\s*)[-*+]\s+/.test(line) ||
+			/^(\s*)\d+[.)]\s+/.test(line)
+		);
+	});
+	if (!keepEmpty && !hasMarkers) {
+		const root = createNode('Imported');
+		for (const raw of lines) {
+			const line = raw.trim();
+			if (line) root.children.push(createNode(line));
+		}
+		return root;
+	}
+
 	let root: MindNode | null = null;
 	const stack: Array<{ depth: number; node: MindNode }> = [];
 

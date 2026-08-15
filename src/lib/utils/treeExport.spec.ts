@@ -46,10 +46,10 @@ describe('parseMarkdownTree', () => {
 		expect(root.children[0].text).toBe('Child');
 	});
 
-	it('ignores plain paragraphs', () => {
+	it('imports plain text lines as sibling nodes', () => {
 		const root = parseMarkdownTree('alpha\nbeta');
 		expect(root.text).toBe('Imported');
-		expect(root.children).toHaveLength(0);
+		expect(root.children.map((c) => c.text)).toEqual(['alpha', 'beta']);
 	});
 
 	it('builds hierarchy from headings while skipping paragraphs', () => {

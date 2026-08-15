@@ -8,36 +8,36 @@
 		applicationCategory: 'ProductivityApplication',
 		operatingSystem: 'Web',
 		description:
-			'MonoMap is a single-purpose, keyboard-first, local-first mind map app. It opens instantly, works offline, and stays out of the way while you think.',
+			'MonoMap is a single-purpose, keyboard-first, local-first mind map and kanban board app. It opens instantly, works offline, and stays out of the way while you think.',
 		offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
 		author: { '@type': 'Organization', name: 'MonoMap', url: 'https://monomap.app/' }
 	});
 </script>
 
 <svelte:head>
-	<title>MonoMap - Free Mind Map App</title>
+	<title>MonoMap - Free Mind Map &amp; Kanban App</title>
 	<meta
 		name="description"
-		content="Free, local-first mind map app with .md support, zero bloat and minimal interface."
+		content="Free, local-first mind map and kanban board app with .md support, zero bloat and minimal interface."
 	/>
 	<link rel="canonical" href="https://monomap.app/" />
 	<meta name="robots" content="index, follow" />
 
 	<meta property="og:type" content="website" />
 	<meta property="og:site_name" content="MonoMap" />
-	<meta property="og:title" content="MonoMap - Free Mind Map App" />
+	<meta property="og:title" content="MonoMap - Free Mind Map &amp; Kanban App" />
 	<meta
 		property="og:description"
-		content="Free, local-first mind map app with .md support, zero bloat and minimal interface."
+		content="Free, local-first mind map and kanban board app with .md support, zero bloat and minimal interface."
 	/>
 	<meta property="og:url" content="https://monomap.app/" />
 	<meta property="og:image" content="https://monomap.app/og-image.png" />
 
 	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="MonoMap - Free Mind Map App" />
+	<meta name="twitter:title" content="MonoMap - Free Mind Map &amp; Kanban App" />
 	<meta
 		name="twitter:description"
-		content="Free, local-first mind map app with .md support, zero bloat and minimal interface."
+		content="Free, local-first mind map and kanban board app with .md support, zero bloat and minimal interface."
 	/>
 	<meta name="twitter:image" content="https://monomap.app/og-image.png" />
 </svelte:head>
@@ -60,10 +60,10 @@
 	</nav>
 
 	<header class="hero">
-		<h1 class="hero-title reveal" style="--d: 0ms">One tool.<br />One purpose.<br /><span class="accent">Zero bloat.</span></h1>
+		<h1 class="hero-title reveal" style="--d: 0ms">One tool.<br />Two workspaces.<br /><span class="accent">Zero bloat.</span></h1>
 		<p class="hero-sub reveal" style="--d: 100ms">
-			MonoMap is a keyboard-first, local-first mind map. It opens instantly, works
-			offline, and never gets in the way of your thinking.
+			MonoMap is a keyboard-first, local-first mind map and kanban board. It opens
+			instantly, works offline, and never gets in the way of your thinking.
 		</p>
 		<div class="hero-cta reveal" style="--d: 200ms">
 			<a href="/workspace" class="btn-primary">Start mapping <span aria-hidden="true">→</span></a>
@@ -105,14 +105,14 @@
 	<section class="section" id="why">
 		<h2 class="section-title">It stays small on purpose.</h2>
 		<p class="section-lede">
-			Most tools grow until they bury your thinking under menus and features. MonoMap does one
-			thing — mind mapping — and does it without getting in the way.
+			Most tools grow until they bury your thinking under menus and features. MonoMap does two
+			things — mind mapping and kanban — and does them without getting in the way.
 		</p>
 		<div class="principles">
 			<div class="principle">
 				<span class="principle-num">1</span>
 				<h3>One job</h3>
-				<p>A mind map. Not a suite, not a dashboard, not a subscription.</p>
+				<p>A mind map and a kanban board. Not a suite, not a dashboard, not a subscription.</p>
 			</div>
 			<div class="principle">
 				<span class="principle-num">2</span>
@@ -133,6 +133,18 @@
 			<div class="feature">
 				<h3>Infinite canvas</h3>
 				<p>Pan, zoom, and drag nodes anywhere. The map grows as big as your thinking.</p>
+			</div>
+			<div class="feature">
+				<h3>Mind map + Kanban</h3>
+				<p>Two workspaces, one toggle — flip between the infinite canvas and a board without reloading.</p>
+			</div>
+			<div class="feature">
+				<h3>Kanban boards</h3>
+				<p>Drag-and-drop cards and columns, labels, due dates, and sub-task checklists.</p>
+			</div>
+			<div class="feature">
+				<h3>Mind map ↔ board bridge</h3>
+				<p>Turn a node into a card, a branch into a board, and jump between them in one click.</p>
 			</div>
 			<div class="feature">
 				<h3>Live Markdown split view</h3>
@@ -165,7 +177,7 @@
 
 	<footer class="footer">
 		<span class="brand-name">MonoMap</span>
-		<span class="footer-tag">One tool. One purpose. Zero bloat.</span>
+		<span class="footer-tag">One tool. Two workspaces. Zero bloat.</span>
 		<div class="footer-links">
 			<a href="/privacy" class="footer-link">Privacy Policy</a>
 			<a href="/terms" class="footer-link">Terms of Service</a>

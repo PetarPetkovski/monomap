@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { canvas } from '$lib/stores/canvas.svelte';
+	import { kanban } from '$lib/stores/kanban.svelte';
 	import { workspace } from '$lib/stores/workspace.svelte';
 	import { findParent, navigate } from '$lib/utils/tree';
 
@@ -37,6 +38,18 @@
 				canvas.mdPaneOpen = !canvas.mdPaneOpen;
 				return;
 			}
+			if (key === 'k') {
+				e.preventDefault();
+				workspace.setViewMode(workspace.viewMode === 'mindmap' ? 'kanban' : 'mindmap');
+				return;
+			}
+			if (key === 'f') {
+				if (workspace.viewMode === 'kanban') {
+					e.preventDefault();
+					kanban.focusSearch();
+				}
+				return;
+			}
 			if (key === '0') {
 				e.preventDefault();
 				const root = workspace.getActiveMap()?.rootNode;
@@ -55,6 +68,9 @@
 				return;
 			}
 		}
+
+		// Node editing and canvas shortcuts only apply to the mind-map view.
+		if (workspace.viewMode === 'kanban') return;
 
 		// Space: quick tap edits the selected node, hold + drag pans.
 		if (e.key === ' ') {

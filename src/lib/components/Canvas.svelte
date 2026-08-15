@@ -43,6 +43,20 @@
 		}
 	});
 
+	// Center on a node requested while the canvas was hidden (e.g. jumping from a
+	// kanban card link) once the viewport has a real size.
+	$effect(() => {
+		const id = canvas.pendingCenterId;
+		if (!id) return;
+		const map = workspace.getActiveMap();
+		const node = map && findNode(map.rootNode, id);
+		if (!node) return;
+		if (canvas.viewport.width === 0 || canvas.viewport.height === 0) return;
+		canvas.centerOnNode(node);
+		canvas.selectNode(id);
+		canvas.pendingCenterId = null;
+	});
+
 	onMount(() => {
 		measure();
 		const ro = new ResizeObserver(measure);

@@ -19,6 +19,7 @@ export class CanvasState {
 	sidebarOpen = $state(!ui.isCompact);
 	panelOpen = $state(false);
 	mdPaneOpen = $state(false);
+	pendingCenterId = $state<string | null>(null);
 	nodeSizes = $state<Record<string, { w: number; h: number }>>({});
 
 	screenToWorld(sx: number, sy: number): Vec2 {

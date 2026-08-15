@@ -220,13 +220,6 @@
 		cursor: grabbing;
 	}
 
-	.node.selected {
-		box-shadow:
-			0 4px 16px -4px rgb(0 0 0 / 0.28),
-			var(--node-shadow);
-		background: color-mix(in srgb, var(--surface-2) 60%, var(--node-bg));
-	}
-
 	.node.editing {
 		cursor: text;
 		user-select: text;
@@ -235,6 +228,15 @@
 	.node.has-color {
 		border-color: color-mix(in srgb, var(--node-color) 55%, var(--node-edge));
 		background: color-mix(in srgb, var(--node-color) 7%, var(--node-bg));
+	}
+
+	.node.selected {
+		border-color: var(--accent);
+		box-shadow:
+			0 0 0 2px var(--accent),
+			0 4px 16px -4px rgb(0 0 0 / 0.28),
+			var(--node-shadow);
+		background: color-mix(in srgb, var(--accent) 12%, var(--node-bg));
 	}
 
 	.node-icon {

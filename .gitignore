@@ -7,6 +7,10 @@
 # build output
 /build
 
+# test output
+/test-results
+/playwright-report
+
 # local env files
 .env
 .env.*
@@ -18,3 +22,6 @@ npm-debug.log*
 # OS
 .DS_Store
 Thumbs.db
+
+# tooling
+skills-lock.json

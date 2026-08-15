@@ -15,6 +15,7 @@ export interface MindNode {
 	style?: NodeStyle;
 	notes?: string;
 	links?: string[];
+	metadata?: { kanbanCardId?: string };
 	children: MindNode[];
 }
 
@@ -33,10 +34,51 @@ export interface Folder {
 	createdAt: number;
 }
 
+export interface KanbanLabel {
+	text: string;
+	color: string;
+}
+
+export interface KanbanChecklistItem {
+	id: string;
+	text: string;
+	done: boolean;
+}
+
+export interface KanbanCard {
+	id: string;
+	title: string;
+	description?: string;
+	labels?: KanbanLabel[];
+	dueDate?: number;
+	checklist?: KanbanChecklistItem[];
+	sourceNodeId?: string | null;
+}
+
+export interface KanbanColumn {
+	id: string;
+	title: string;
+	cards: KanbanCard[];
+}
+
+export interface KanbanBoard {
+	id: string;
+	title: string;
+	sourceMapId: string | null;
+	columns: KanbanColumn[];
+	createdAt: number;
+	updatedAt: number;
+}
+
+export type ViewMode = 'mindmap' | 'kanban';
+
 export interface Workspace {
-	version: 1;
+	version: 2;
 	activeTabId: string;
 	openTabs: string[];
 	folders: Folder[];
 	maps: MapData[];
+	viewMode: ViewMode;
+	activeBoardId: string;
+	boards: KanbanBoard[];
 }

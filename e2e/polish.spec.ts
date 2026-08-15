@@ -46,17 +46,6 @@ test('shortcuts bar shows a fresh-map tip and hides it after adding a node', asy
 	await expect(tip).not.toBeVisible();
 });
 
-test('shortcuts bar can be disabled and re-enabled', async ({ page }) => {
-	await openMap(page);
-
-	await expect(page.locator('.bar')).toBeVisible();
-	await page.getByRole('button', { name: 'Hide shortcuts' }).click();
-	await expect(page.locator('.bar')).not.toBeVisible();
-
-	await page.getByRole('button', { name: 'Shortcuts' }).click();
-	await expect(page.locator('.bar')).toBeVisible();
-});
-
 test('Ctrl+0 recenters on the root node', async ({ page }) => {
 	await openMap(page);
 

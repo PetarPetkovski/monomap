@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { slide } from 'svelte/transition';
-	import type { MapData } from '$lib/types';
+	import type { KanbanBoard, MapData } from '$lib/types';
 	import { canvas } from '$lib/stores/canvas.svelte';
 	import { settings } from '$lib/stores/settings.svelte';
 	import { theme } from '$lib/stores/theme.svelte';
@@ -13,14 +13,19 @@
 
 	const maps = $derived(workspace.maps);
 	const folders = $derived(workspace.folders);
+	const boards = $derived(workspace.boards);
 	const activeTabId = $derived(workspace.activeTabId);
+	const activeBoardId = $derived(workspace.activeBoardId);
 	const open = $derived(canvas.sidebarOpen);
 	const unassigned = $derived(maps.filter((m) => !m.folderId));
+	const heading = $derived(workspace.viewMode === 'kanban' ? 'Kanban' : 'Mind Map');
+	const isMindMap = $derived(workspace.viewMode !== 'kanban');
 
 	let expanded = $state<Record<string, boolean>>({});
 	let menuFor = $state<string | null>(null);
 	let folderMenuFor = $state<string | null>(null);
-	let renaming = $state<{ type: 'map' | 'folder'; id: string } | null>(null);
+	let boardMenuFor = $state<string | null>(null);
+	let renaming = $state<{ type: 'map' | 'folder' | 'board'; id: string } | null>(null);
 	let renameDraft = $state('');
 	let addingFolder = $state(false);
 	let newFolderDraft = $state('');
@@ -38,18 +43,20 @@
 		return maps.filter((m) => m.folderId === folderId);
 	}
 
-	function startRename(type: 'map' | 'folder', id: string, current: string) {
+	function startRename(type: 'map' | 'folder' | 'board', id: string, current: string) {
 		renaming = { type, id };
 		renameDraft = current;
 		menuFor = null;
 		folderMenuFor = null;
+		boardMenuFor = null;
 	}
 
 	function commitRename() {
 		if (!renaming) return;
 		const value = renameDraft.trim();
 		if (renaming.type === 'map') workspace.renameMap(renaming.id, value || 'Untitled Map');
-		else workspace.renameFolder(renaming.id, value || 'Folder');
+		else if (renaming.type === 'folder') workspace.renameFolder(renaming.id, value || 'Folder');
+		else workspace.renameBoard(renaming.id, value || 'Untitled Board');
 		renaming = null;
 	}
 
@@ -145,6 +152,7 @@
 		if (e.key === 'Escape') {
 			menuFor = null;
 			folderMenuFor = null;
+			boardMenuFor = null;
 			renaming = null;
 			addingFolder = false;
 		}
@@ -152,6 +160,7 @@
 	onclick={() => {
 		menuFor = null;
 		folderMenuFor = null;
+		boardMenuFor = null;
 	}}
 />
 
@@ -161,7 +170,7 @@
 	{/if}
 	<div class="panel" role="complementary" aria-label="Maps sidebar" transition:slide={{ duration: 160 }}>
 		<header>
-			<span class="heading">Maps</span>
+			<span class="heading">{heading}</span>
 			<button
 				type="button"
 				class="icon-btn"
@@ -174,6 +183,19 @@
 		</header>
 
 		<div class="tree">
+			{#if isMindMap}
+				<button
+					type="button"
+					class="tree-row"
+					class:active={canvas.mdPaneOpen}
+					aria-pressed={canvas.mdPaneOpen}
+					title="Toggle MD Editor"
+					onclick={() => (canvas.mdPaneOpen = !canvas.mdPaneOpen)}
+				>
+					<span class="glyph">≔</span>
+					<span class="label">MD Editor</span>
+				</button>
+			{/if}
 			<div class="group-label">Create</div>
 			<button
 				type="button"
@@ -230,6 +252,9 @@
 				{/each}
 			{/if}
 
+			{#if folders.length > 0}
+				<div class="group-label">Folders</div>
+			{/if}
 			{#each folders as folder (folder.id)}
 				<div class="folder">
 					<div
@@ -279,6 +304,7 @@
 								e.stopPropagation();
 								folderMenuFor = folderMenuFor === folder.id ? null : folder.id;
 								menuFor = null;
+								boardMenuFor = null;
 							}}
 							ondblclick={(e) => e.stopPropagation()}
 						>
@@ -318,6 +344,15 @@
 					{/if}
 				</div>
 			{/each}
+
+			<div class="group-label">Boards</div>
+			<button type="button" class="tree-row" onclick={() => workspace.createBoard()}>
+				<span class="glyph">＋</span>
+				<span class="label">New board</span>
+			</button>
+			{#each boards as board (board.id)}
+				{@render BoardRow(board)}
+			{/each}
 		</div>
 
 		<div class="prefs">
@@ -344,19 +379,6 @@
 				</span>
 				<span class="pref-name">{theme.theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
 			</button>
-			{#if !ui.isCompact}
-				<button
-					type="button"
-					class="pref-row"
-					class:active={settings.shortcutsEnabled}
-					aria-pressed={settings.shortcutsEnabled}
-					title="Keyboard shortcuts"
-					onclick={() => settings.toggleShortcuts()}
-				>
-					<span class="pref-glyph">⌨</span>
-					<span class="pref-name">Shortcuts</span>
-				</button>
-			{/if}
 			<button
 				type="button"
 				class="pref-row"
@@ -379,17 +401,6 @@
 					</svg>
 				</span>
 				<span class="pref-name">Background Dots</span>
-			</button>
-			<button
-				type="button"
-				class="pref-row"
-				class:active={canvas.mdPaneOpen}
-				aria-pressed={canvas.mdPaneOpen}
-				title="Toggle MD Editor"
-				onclick={() => (canvas.mdPaneOpen = !canvas.mdPaneOpen)}
-			>
-				<span class="pref-glyph">≔</span>
-				<span class="pref-name">MD Editor</span>
 			</button>
 		</div>
 
@@ -510,6 +521,77 @@
 					onclick={() => {
 						workspace.deleteMap(map.id);
 						menuFor = null;
+					}}
+				>
+					Delete
+				</button>
+			</div>
+		{/if}
+	</div>
+{/snippet}
+
+{#snippet BoardRow(board: KanbanBoard)}
+	<div
+		class="tree-row board-row"
+		class:active={activeBoardId === board.id && workspace.viewMode === 'kanban'}
+		role="button"
+		tabindex="-1"
+		onclick={(e) => {
+			if ((e.target as HTMLElement).closest('.menu')) return;
+			workspace.openBoard(board.id);
+		}}
+		ondblclick={() => {
+			if (!renaming) startRename('board', board.id, board.title);
+		}}
+		onkeydown={(e) => {
+			if (e.key === 'Enter' || e.key === ' ') {
+				e.preventDefault();
+				workspace.openBoard(board.id);
+			}
+		}}
+	>
+		<span class="glyph">📋</span>
+		{#if renaming?.type === 'board' && renaming.id === board.id}
+			<input
+				class="rename-input"
+				bind:value={renameDraft}
+				use:autofocus
+				onclick={(e) => e.stopPropagation()}
+				onkeydown={(e) => {
+					if (e.key === 'Enter') commitRename();
+					if (e.key === 'Escape') renaming = null;
+				}}
+				onblur={commitRename}
+			/>
+		{:else}
+			<span class="label" title={board.title}>{board.title}</span>
+		{/if}
+		<span class="count">{board.columns.length}</span>
+		<button
+			type="button"
+			class="menu-btn"
+			aria-label={`Actions for ${board.title}`}
+			onclick={(e) => {
+				e.stopPropagation();
+				boardMenuFor = boardMenuFor === board.id ? null : board.id;
+				menuFor = null;
+				folderMenuFor = null;
+			}}
+			ondblclick={(e) => e.stopPropagation()}
+		>
+			⋯
+		</button>
+		{#if boardMenuFor === board.id}
+			<div class="menu">
+				<button type="button" onclick={() => startRename('board', board.id, board.title)}>
+					Rename
+				</button>
+				<button
+					type="button"
+					class="danger"
+					onclick={() => {
+						workspace.deleteBoard(board.id);
+						boardMenuFor = null;
 					}}
 				>
 					Delete

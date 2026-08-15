@@ -45,7 +45,7 @@ const html = `<!doctype html>
       </svg>
       <span class="name">MonoMap</span>
     </div>
-    <div class="tag">One tool. One purpose. Zero bloat.</div>
+    <div class="tag">One tool. Two workspaces. Zero bloat.</div>
   </body>
 </html>`;
 
