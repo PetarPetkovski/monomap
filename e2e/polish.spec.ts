@@ -12,10 +12,14 @@ test('dotted grid can be toggled from preferences', async ({ page }) => {
 	const canvasRoot = page.locator('.canvas-root');
 	await expect(canvasRoot).toHaveCSS('background-image', /radial-gradient/);
 
-	await page.getByRole('button', { name: 'Dots' }).click();
+	await page.getByRole('button', { name: 'Preferences' }).click();
+	const prefs = page.getByRole('dialog', { name: 'Preferences' });
+	await expect(prefs).toBeVisible();
+
+	await prefs.getByRole('button', { name: 'Dots' }).click();
 	await expect(canvasRoot).toHaveCSS('background-image', 'none');
 
-	await page.getByRole('button', { name: 'Dots' }).click();
+	await prefs.getByRole('button', { name: 'Dots' }).click();
 	await expect(canvasRoot).toHaveCSS('background-image', /radial-gradient/);
 });
 
@@ -25,7 +29,11 @@ test('theme toggle switches dark mode and persists across reload', async ({ page
 	const html = page.locator('html');
 	await expect(html).not.toHaveClass(/dark/);
 
-	await page.getByRole('button', { name: 'Dark mode' }).click();
+	await page.getByRole('button', { name: 'Preferences' }).click();
+	const prefs = page.getByRole('dialog', { name: 'Preferences' });
+	await expect(prefs).toBeVisible();
+
+	await prefs.getByRole('button', { name: 'Dark mode' }).click();
 	await expect(html).toHaveClass(/dark/);
 	expect(await page.evaluate(() => localStorage.getItem('mindmap:theme'))).toBe('dark');
 

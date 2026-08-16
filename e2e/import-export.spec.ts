@@ -98,8 +98,13 @@ test('saves a profile and imports it back to restore the workspace', async ({ pa
 	await openMap(page);
 	page.on('dialog', (dialog) => dialog.accept());
 
+	// Open the Preferences window where Save/Import profile now lives.
+	await page.getByRole('button', { name: 'Preferences' }).click();
+	const prefs = page.getByRole('dialog', { name: 'Preferences' });
+	await expect(prefs).toBeVisible();
+
 	const downloadPromise = page.waitForEvent('download');
-	await page.getByRole('button', { name: 'Save profile' }).click();
+	await prefs.getByRole('button', { name: 'Save profile' }).click();
 	const download = await downloadPromise;
 	expect(download.suggestedFilename()).toBe('mindmap-profile.json');
 	const profilePath = await download.path();
@@ -112,7 +117,7 @@ test('saves a profile and imports it back to restore the workspace', async ({ pa
 		const w = window.__mindmap!.workspace;
 		w.renameMap(w.maps[0].id, 'Changed');
 	});
-	await page.setInputFiles('input[data-testid="import-profile"]', {
+	await prefs.locator('input[data-testid="import-profile"]').setInputFiles({
 		name: 'mindmap-profile.json',
 		mimeType: 'application/json',
 		buffer: readFileSync(profilePath!)

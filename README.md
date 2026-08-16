@@ -2,8 +2,8 @@
 
 One tool, two workspaces — a keyboard-first, local-first mind map **and** kanban board. Zero bloat.
 
-MonoMap runs entirely in your browser. Maps and boards live on your device (IndexedDB), work offline, and
-are never uploaded to a server. No account, no sign-up, no cloud.
+MonoMap runs entirely in your browser. Maps and boards live on your device (IndexedDB) and work offline,
+with no account or cloud required.
 
 ![og image](static/og-image.png)
 

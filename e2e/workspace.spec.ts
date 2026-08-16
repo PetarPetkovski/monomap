@@ -68,10 +68,8 @@ test('folders organize maps via drag and drop', async ({ page }) => {
 
 	await page.evaluate(() => window.__mindmap!.workspace.createMap('Project A'));
 
-	await page.getByRole('button', { name: 'New folder' }).click();
-	const folderInput = page.getByPlaceholder('Folder name');
-	await folderInput.fill('Work');
-	await folderInput.press('Enter');
+	// Folder creation is currently hidden from the UI, so seed it via the store.
+	await page.evaluate(() => window.__mindmap!.workspace.createFolder('Work'));
 	await expect(page.getByText('Work', { exact: true })).toBeVisible();
 
 	const sidebar = page.getByRole('complementary', { name: 'Maps sidebar' });

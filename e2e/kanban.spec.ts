@@ -23,7 +23,7 @@ test('creates a board, columns and cards from the UI', async ({ page }) => {
 	await openMap(page);
 
 	await page.locator('.switch button', { hasText: 'Kanban' }).click();
-	await page.getByText('New board').click();
+	await page.getByText('New Kanban Board').click();
 	await expect(page.locator('.board-title')).toHaveText('Untitled Board');
 
 	await page.locator('.add-col').click();

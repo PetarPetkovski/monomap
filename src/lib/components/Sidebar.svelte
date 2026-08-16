@@ -2,14 +2,23 @@
 	import { slide } from 'svelte/transition';
 	import type { KanbanBoard, MapData } from '$lib/types';
 	import { canvas } from '$lib/stores/canvas.svelte';
-	import { settings } from '$lib/stores/settings.svelte';
-	import { theme } from '$lib/stores/theme.svelte';
 	import { ui } from '$lib/stores/ui.svelte';
 	import { workspace } from '$lib/stores/workspace.svelte';
-	import { applyProfile, buildProfile, parseProfile } from '$lib/profile';
-	import { downloadJson, downloadText, safeFilename } from '$lib/utils/download';
+	import PreferencesModal from './PreferencesModal.svelte';
+	import { downloadText, safeFilename } from '$lib/utils/download';
 	import { exportMapPng } from '$lib/utils/exportPng';
 	import { autoSortTree, mapToMarkdown, parseMarkdownTree } from '$lib/utils/treeExport';
+
+	let showPreferences = $state(false);
+
+	// Folder creation is temporarily hidden; existing folders still render.
+	const foldersEnabled = false;
+
+	$effect(() => {
+		const onClosePrefs = () => (showPreferences = false);
+		window.addEventListener('mindmap:close-preferences', onClosePrefs);
+		return () => window.removeEventListener('mindmap:close-preferences', onClosePrefs);
+	});
 
 	const maps = $derived(workspace.maps);
 	const folders = $derived(workspace.folders);
@@ -32,8 +41,6 @@
 	let dragTarget = $state<string | null>(null);
 	let fileInput = $state<HTMLInputElement | null>(null);
 	let importing = $state(false);
-	let profileInput = $state<HTMLInputElement | null>(null);
-	let importingProfile = $state(false);
 
 	function folderExpanded(folderId: string) {
 		return expanded[folderId] !== false;
@@ -65,33 +72,6 @@
 		if (value) workspace.createFolder(value);
 		addingFolder = false;
 		newFolderDraft = '';
-	}
-
-	function saveProfile() {
-		downloadJson(buildProfile(), 'mindmap-profile.json');
-	}
-
-	async function importProfileFile(file: File) {
-		const text = await file.text();
-		const profile = parseProfile(text);
-		if (!profile) {
-			alert('This is not a valid Mind Map profile file.');
-			return;
-		}
-		const confirmed = confirm('Replace your current local workspace with this profile?');
-		if (confirmed) applyProfile(profile);
-	}
-
-	function onProfileChosen(e: Event) {
-		const input = e.currentTarget as HTMLInputElement;
-		const file = input.files?.[0];
-		if (file) {
-			importingProfile = true;
-			void importProfileFile(file).finally(() => {
-				importingProfile = false;
-				input.value = '';
-			});
-		}
 	}
 
 	function exportMapMd(map: MapData) {
@@ -210,27 +190,34 @@
 				<span class="label">New map</span>
 			</button>
 
-			{#if addingFolder}
-				<input
-					class="rename-input new-folder-input"
-					bind:value={newFolderDraft}
-					placeholder="Folder name"
-					use:autofocus
-					onkeydown={(e) => {
-						if (e.key === 'Enter') commitNewFolder();
-						if (e.key === 'Escape') {
-							addingFolder = false;
-							newFolderDraft = '';
-						}
-					}}
-					onblur={commitNewFolder}
-				/>
-			{:else}
-				<button type="button" class="tree-row" onclick={() => (addingFolder = true)}>
-					<span class="glyph">＋</span>
-					<span class="label">New folder</span>
-				</button>
+			{#if foldersEnabled}
+				{#if addingFolder}
+					<input
+						class="rename-input new-folder-input"
+						bind:value={newFolderDraft}
+						placeholder="Folder name"
+						use:autofocus
+						onkeydown={(e) => {
+							if (e.key === 'Enter') commitNewFolder();
+							if (e.key === 'Escape') {
+								addingFolder = false;
+								newFolderDraft = '';
+							}
+						}}
+						onblur={commitNewFolder}
+					/>
+				{:else}
+					<button type="button" class="tree-row" onclick={() => (addingFolder = true)}>
+						<span class="glyph">＋</span>
+						<span class="label">New folder</span>
+					</button>
+				{/if}
 			{/if}
+
+			<button type="button" class="tree-row" onclick={() => workspace.createBoard()}>
+				<span class="glyph">＋</span>
+				<span class="label">New Kanban Board</span>
+			</button>
 
 			<button type="button" class="tree-row" disabled={importing} onclick={() => fileInput?.click()}>
 				<span class="glyph">{importing ? '…' : '⇪'}</span>
@@ -246,7 +233,7 @@
 			/>
 
 			{#if unassigned.length > 0}
-				<div class="group-label">Maps</div>
+				<div class="group-label">Mind Maps</div>
 				{#each unassigned as map (map.id)}
 					{@render MapRow(map)}
 				{/each}
@@ -345,83 +332,23 @@
 				</div>
 			{/each}
 
-			<div class="group-label">Boards</div>
-			<button type="button" class="tree-row" onclick={() => workspace.createBoard()}>
-				<span class="glyph">＋</span>
-				<span class="label">New board</span>
-			</button>
+			{#if boards.length > 0}
+				<div class="group-label">Kanban Boards</div>
+			{/if}
 			{#each boards as board (board.id)}
 				{@render BoardRow(board)}
 			{/each}
 		</div>
 
-		<div class="prefs">
-			<span class="prefs-label">Preferences</span>
-			<button
-				type="button"
-				class="pref-row"
-				class:active={theme.theme === 'dark'}
-				aria-pressed={theme.theme === 'dark'}
-				title="Toggle dark mode"
-				onclick={() => theme.toggle()}
-			>
-				<span class="pref-glyph">
-					{#if theme.theme === 'dark'}
-						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-							<circle cx="12" cy="12" r="4" />
-							<path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
-						</svg>
-					{:else}
-						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
-						</svg>
-					{/if}
-				</span>
-				<span class="pref-name">{theme.theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
-			</button>
-			<button
-				type="button"
-				class="pref-row"
-				class:active={settings.gridEnabled}
-				aria-pressed={settings.gridEnabled}
-				title="Background Dots"
-				onclick={() => settings.toggleGrid()}
-			>
-				<span class="pref-glyph">
-					<svg width="14" height="14" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
-						<circle cx="2" cy="2" r="1.1" />
-						<circle cx="6" cy="2" r="1.1" />
-						<circle cx="10" cy="2" r="1.1" />
-						<circle cx="2" cy="6" r="1.1" />
-						<circle cx="6" cy="6" r="1.1" />
-						<circle cx="10" cy="6" r="1.1" />
-						<circle cx="2" cy="10" r="1.1" />
-						<circle cx="6" cy="10" r="1.1" />
-						<circle cx="10" cy="10" r="1.1" />
-					</svg>
-				</span>
-				<span class="pref-name">Background Dots</span>
-			</button>
-		</div>
-
-		<div class="profile">
-			<span class="profile-label">Profile</span>
-			<div class="profile-actions">
-				<button type="button" onclick={saveProfile}>Save profile</button>
-				<button type="button" disabled={importingProfile} onclick={() => profileInput?.click()}>
-					{importingProfile ? 'Importing…' : 'Import profile'}
-				</button>
-			</div>
-			<input
-				bind:this={profileInput}
-				type="file"
-				accept=".json,application/json"
-				data-testid="import-profile"
-				class="hidden"
-				onchange={onProfileChosen}
-			/>
-		</div>
+		<button type="button" class="tree-row prefs-row" onclick={() => (showPreferences = true)}>
+			<span class="glyph">⚙</span>
+			<span class="label">Preferences</span>
+		</button>
 	</div>
+
+	{#if showPreferences}
+		<PreferencesModal />
+	{/if}
 {:else}
 	<button
 		type="button"
@@ -456,7 +383,6 @@
 			}
 		}}
 	>
-		<span class="glyph">▦</span>
 		{#if renaming?.type === 'map' && renaming.id === map.id}
 			<input
 				class="rename-input"
@@ -550,7 +476,6 @@
 			}
 		}}
 	>
-		<span class="glyph">📋</span>
 		{#if renaming?.type === 'board' && renaming.id === board.id}
 			<input
 				class="rename-input"
@@ -699,6 +624,12 @@
 		background: color-mix(in srgb, var(--accent) 14%, var(--surface-2));
 	}
 
+	.prefs-row {
+		margin: 4px 8px 8px;
+		width: calc(100% - 16px);
+		border: 1px solid var(--edge);
+	}
+
 	.folder-head {
 		font-weight: 500;
 	}
@@ -810,103 +741,6 @@
 
 	.menu button.danger {
 		color: #ef4444;
-	}
-
-	.profile {
-		margin: 8px 8px 0;
-		padding: 10px 12px;
-		border-radius: 10px;
-		border: 1px solid var(--edge);
-		display: flex;
-		flex-direction: column;
-		gap: 8px;
-	}
-
-	.profile-label {
-		font-size: 11px;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		color: var(--muted);
-	}
-
-	.prefs {
-		margin: 8px 8px 0;
-		padding: 8px;
-		border-radius: 10px;
-		border: 1px solid var(--edge);
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-	}
-
-	.prefs-label {
-		font-size: 11px;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		color: var(--muted);
-		padding: 0 4px 4px;
-	}
-
-	.pref-row {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		width: 100%;
-		padding: 4px 6px;
-		border: none;
-		border-radius: 7px;
-		background: transparent;
-		color: var(--fg);
-		font-size: 12.5px;
-		text-align: left;
-		cursor: pointer;
-	}
-
-	.pref-row:hover {
-		background: var(--surface-2);
-	}
-
-	.pref-row.active {
-		background: var(--surface-2);
-	}
-
-	.pref-glyph {
-		width: 18px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-size: 13px;
-		color: var(--muted);
-		flex: none;
-	}
-
-	.pref-name {
-		flex: 1;
-	}
-
-	.profile-actions {
-		display: flex;
-		gap: 6px;
-	}
-
-	.profile-actions button {
-		flex: 1;
-		padding: 6px 8px;
-		border: 1px solid var(--edge);
-		border-radius: 7px;
-		background: transparent;
-		color: var(--fg);
-		font-size: 12px;
-		cursor: pointer;
-	}
-
-	.profile-actions button:hover {
-		background: var(--surface-2);
-	}
-
-	.profile-actions button:disabled {
-		opacity: 0.6;
-		cursor: default;
 	}
 
 	.handle {

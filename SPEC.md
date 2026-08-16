@@ -26,8 +26,8 @@ strategy.
 | Canvas engine        | Hybrid SVG + DOM                   | DOM nodes (contenteditable); background SVG layer for Bezier lines |
 | Client database      | IndexedDB via `idb-keyval`         | Debounced (150 ms) autosave, restored on boot                      |
 | Static hosting       | `@sveltejs/adapter-static`         | Build output in `build/`                                           |
-| Backend & sync       | _Stubbed (planned: Supabase + RLS)_| See §9 Cloud Roadmap                                              |
-| Monetization         | _Stubbed (planned: Lemon Squeezy)_ | See §9 Cloud Roadmap                                              |
+| Backend & sync       | _Proprietary (closed-source)_      | Paid accounts + cloud sync live in a private repo (see §9)         |
+| Monetization         | _Proprietary (closed-source)_      | Paid subscription billing lives in a private repo (see §9)         |
 
 ## 3. Data Model
 
@@ -166,18 +166,18 @@ in the node's corner creates a child (like `Tab`):
 
 - **Left sidebar** (open by default; toggle with `Ctrl/Cmd + \`); its header reads **Mind Map** in the map
   workspace and **Kanban** in the board workspace:
-  - Tree view of **folders** and **loose maps**; folders expand/collapse.
+  - **Create** group: **New map**, **New Kanban Board**, and **Import .md / .txt**. Folder creation is
+    currently hidden (existing folders still render and organize maps).
+  - **Mind Maps** group: tree view of loose maps; **Kanban Boards** group: the board list.
   - **Drag-and-drop** map organization (drag onto a folder header or back onto the root drop zone).
   - **Double-click a map or folder** to rename it inline.
   - Map actions menu: **Rename**, **Duplicate**, **Export .md**, **Export PNG**, **Delete**. Clicking
     anywhere outside the `⋯` menu closes it.
   - Folder actions: **Rename**, **Delete**.
-  - **Import .md / .txt** — parses the file into a new map with auto-sorted, tidy layout.
   - **MD Editor** row at the top of the menu — toggles the split-view .md editor (Mind Map workspace only;
     the Kanban workspace has no markdown editor).
-  - **Preferences** card: **Dark mode / Light mode** toggle and **Background Dots** — each a full-width
-    clickable row.
-  - **Profile** actions: **Save profile** / **Import profile** (full workspace + settings backup).
+  - **Preferences** row opens a preferences window: **Dark mode / Light mode** toggle, **Background Dots**,
+    and profile backup (**Save profile** / **Import profile** — full workspace + settings JSON).
 - **Multi-tab bar** — appears at the top edge only when **> 1 map tab** is open. Supports switch, close,
   and new-tab. `Ctrl/Cmd + T` = new tab, `Ctrl/Cmd + W` = close tab.
 - Creating, renaming, duplicating, deleting maps/folders is fully reactive and persisted automatically.
@@ -415,15 +415,9 @@ npm run build        # static build → build/
 npm run preview      # serve the production build
 ```
 
-## 9. Cloud Roadmap (planned, not implemented)
+## 9. Accounts, Cloud Sync & Monetization (proprietary)
 
-The local-first core is complete. Planned next steps, designed as clean seams:
-
-1. **Supabase + PostgreSQL with RLS** — mirror of the local schema:
-   - `public.profiles(id, email, subscription_status, lemon_squeezy_customer_id, updated_at)`
-   - `public.user_maps(id, user_id, title, folder_id, map_data JSONB, updated_at)`
-   - RLS policies scoping all rows to `auth.uid()`.
-2. **Passwordless auth** — email magic link / OAuth via Supabase; anonymous local sessions merge on sign-in.
-3. **Sync engine** — background multi-device sync for paid accounts; local writes first, remote writes after.
-4. **Lemon Squeezy** — Merchant-of-Record checkout + webhooks (a Supabase Edge Function) updating
-   `subscription_status`; feature gating for sync/backup.
+The paid cloud layer — user accounts, cross-device sync, and subscription billing — is a **proprietary,
+closed-source feature**. It is intentionally **not included in this repository**; the public repo contains
+the local-first, free-forever product only. The cloud code, schema, and billing configuration live in a
+private repository.
